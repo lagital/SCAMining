@@ -12,21 +12,21 @@ class Database(object):
         self.user = constants.USER
         self.password = constants.PASSWORD
 
-    def connect (self):
+    def connect(self):
 
-        print 'Initialize db connection: Start'
+        print('Initialize db connection: Start')
         self.conn = psycopg2.connect(
-            host = self.host,
-            database = self.database,
-            user = self.user,
-            password = self.password
+            host=self.host,
+            database=self.database,
+            user=self.user,
+            password=self.password
         )
         self.cur = self.conn.cursor()
-        print 'Initialize db connection: Done'
+        print('Initialize db connection: Done')
 
-    def get_trace_idlist (self, kind_name):
+    def get_trace_idlist(self, kind_name):
 
-        query = "SELECT id FROM trace WHERE kind = '"+kind_name+"'"
+        query = "SELECT id FROM trace WHERE kind = '" + kind_name + "'"
         self.cur.execute(query)
         idList = []
         while 1:
