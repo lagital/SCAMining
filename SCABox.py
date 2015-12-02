@@ -166,7 +166,7 @@ def nicv2(parallels, timing, db, idList):
     # initialize ncomponents which will contain number of components
     ncomponents = len(ttrace)
     div_ncomponents = ncomponents // parallels
-    div_nlist = len(idList) // 50
+    div_nlist = len(idList) // 200
     print('# Traces :', len(idList))
     print('# Components :', ncomponents)
     print('# Cycle steps :', div_ncomponents)
@@ -178,11 +178,11 @@ def nicv2(parallels, timing, db, idList):
     for i in range(div_ncomponents):
         if timing: start_time = time.time()                                                             # TIMING - START
         for f in range(div_nlist):
-            block = str(idList[f * 50: f * 50 + 50])
+            block = str(idList[f * 200: f * 200 + 200])
             cmd = "SELECT message, data FROM trace WHERE id in " + block.replace('[', '(').replace(']', ')') + ""
             db.cur.execute(cmd)
             msg_raw_data = list(db.cur.fetchall())
-            for c in range(50):
+            for c in range(200):
                 try:
                     trace = parse_binary(msg_raw_data[c][1])
                     msg_p = int(msg_raw_data[c][0][0:2], 16)
@@ -284,7 +284,7 @@ def test():
     db = Database()
     db.connect()
     idList = db.get_trace_idlist('des_first')
-    nicv2(200, False, db, idList)
+    nicv2(100, True, db, idList[0:200])
 
 if __name__ == "__main__":
     test()
