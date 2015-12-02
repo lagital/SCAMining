@@ -152,7 +152,6 @@ def nicv2(parallels, timing, db, idList):
     total = [[] for n in range(parallels)]
     # initialize list of bad traces
     bad = []
-    ttrace = None
     for i in idList:
         try:
             cmd = "SELECT message, data FROM trace WHERE id = '" + str(i) + "'"
@@ -167,29 +166,32 @@ def nicv2(parallels, timing, db, idList):
     # initialize ncomponents which will contain number of components
     ncomponents = len(ttrace)
     div_ncomponents = ncomponents // parallels
+    div_nlist = len(idList) // 50
+    print('# Traces :', len(idList))
     print('# Components :', ncomponents)
     print('# Cycle steps :', div_ncomponents)
     # initialize a sum of inter-class variances and total variance for one component
     svar = [0.0] * parallels
     tvar = [0.0] * parallels
     # initialize nicv array
-    nicv_list = [0.0] * div_ncomponents*parallels
+    nicv_list = [0.0] * div_ncomponents * parallels
     for i in range(div_ncomponents):
         if timing: start_time = time.time()                                                             # TIMING - START
-        try:
-            cmd = "SELECT message, data FROM trace WHERE id = '" + str(idList[i]) + "'"
+        for f in range(div_nlist):
+            block = str(idList[f * 50: f * 50 + 50])
+            cmd = "SELECT message, data FROM trace WHERE id in " + block.replace('[', '(').replace(']', ')') + ""
             db.cur.execute(cmd)
-            one = db.cur.fetchone()
-            msg, raw_data = one
-            trace = parse_binary(raw_data)
-            for j in range(parallels):
-                classes[j][int(msg[0:2], 16)].append(trace[i * parallels + j])
-                total[j].append(trace[i * parallels + j])
-        except:
-            print("WARNING: Trace", i, "was not processed.")
-            bad.append(i)
-            msg = 'bad'
-            continue
+            msg_raw_data = list(db.cur.fetchall())
+            for c in range(50):
+                try:
+                    trace = parse_binary(msg_raw_data[c][1])
+                    msg_p = int(msg_raw_data[c][0][0:2], 16)
+                    for j in range(parallels):
+                        classes[j][msg_p].append(trace[i * parallels + j])
+                        total[j].append(trace[i * parallels + j])
+                except:
+                    print("WARNING: One trace was not processed.")
+        print(parallels, ' components were processed.')
         for k in range(parallels):
             for c in range(256):
                 if len(classes[k][c]) >= 2:
@@ -197,8 +199,8 @@ def nicv2(parallels, timing, db, idList):
         for p in range(parallels):
             tvar[p] = np.var(total[p])
             nicv_list[i * parallels + p] = math.sqrt(svar[p] / tvar[p])
-        if i % parallels == 0 and i != 0:
-            print("NICV was calculated for the next", parallels, "components ...")
+        if i != 0:
+            print("NICV was calculated for ", parallels, "components ...")
 
         classes = [[[] for n in range(256)] for m in range(parallels)]
         total = [[] for n in range(parallels)]
@@ -216,7 +218,7 @@ def nicv2(parallels, timing, db, idList):
     for i in range(div_ncomponents):
         t.write(str(nicv_list[i]) + ' ')
     t.close()
-    plt.bar(range(0, div_ncomponents), nicv_list, color='g')
+    plt.bar(range(0, div_ncomponents * parallels), nicv_list, color='g')
     plt.ylabel('NICV')
     plt.xlabel('samples')
     plt.colors()
@@ -282,7 +284,7 @@ def test():
     db = Database()
     db.connect()
     idList = db.get_trace_idlist('des_first')
-    nicv2(50, False, db, idList)
+    nicv2(200, False, db, idList)
 
 if __name__ == "__main__":
     test()
