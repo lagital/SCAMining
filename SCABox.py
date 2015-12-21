@@ -2,148 +2,12 @@ from TracesFilesystem import *
 import time
 import math
 from Database import Database
-import numpy
 import matplotlib.pyplot as plt
-import re
-import heapq
+import scipy.cluster.vq as sp
 import numpy as np
 
 
-def nicv(db, idList):
-    start_time = time.time()
-    idListLen = len(idList)
-    errList = []
-    meanList = []
-    varList = []
-
-    cmd = "SELECT message, cipher, data FROM trace WHERE id = '" + str(idList[2]) + "'"
-    db.cur.execute(cmd)
-    one = db.cur.fetchone()
-    tmsg, tcrypt, traw_data = one
-
-    parse_data = parse_binary(traw_data)
-    points = len(parse_data)
-    print("Points in trace:", points)
-
-    print("Calculating ...")
-
-    tclassList = [0.0] * points
-    tMeanList = [0.0] * points
-    tPowerMeanList = [0.0] * points
-    parallels = 20
-    tGlobalVarlist = [[] for i in range(parallels)]
-    classList = [] * 256
-    globalVarlist = []
-    byteList = []
-
-    collected = 0
-    classCalcCount = 0
-    classCountNotIncluded = 0
-    tracesInClass = 0
-
-    for i in range(points // parallels):
-        start_time = time.time()
-        # idListPack = idList[i * parallels:i * parallels + parallels]
-        # cmd = "SELECT message FROM trace WHERE id in " + str(idListPack).replace('[', '(').replace(']', ')') + ""
-        # db.cur.execute(cmd)
-        # list_msg = db.cur.fetchall()
-        # cmd = "SELECT data FROM trace WHERE id in " + str(idListPack).replace('[', '(').replace(']', ')') + ""
-        # db.cur.execute(cmd)
-        # list_raw_data = db.cur.fetchall()
-        if collected == 0:
-            for j in range(idListLen):
-                err = 0
-                cmd = "SELECT message, data FROM trace WHERE id = '" + str(idList[j]) + "'"
-                db.cur.execute(cmd)
-                one = db.cur.fetchone()
-                msg, raw_data = one
-                try:
-                    parse_data = parse_binary(raw_data)
-                except:
-                    err = 1
-                    errList.append(idList[j])
-                if err == 0:
-                    for k in range(parallels):
-                        tGlobalVarlist[k].append(parse_data[i * parallels + k])
-                    parse_data = None
-                    byteList.append((int(msg[0:2], 16), idList[j]))
-                if j % parallels == 0 and j != 0:
-                    print(j, "traces were processed.")
-            for m in range(parallels):
-                globalVarlist.append(numpy.var(numpy.array(tGlobalVarlist[m])))
-            tGlobalVarlist = [[] for m in range(parallels)]
-            collected = 1
-        else:
-            for j in range(idListLen):
-                err = 0
-                cmd = "SELECT message, data FROM trace WHERE id = '" + str(idList[j]) + "'"
-                db.cur.execute(cmd)
-                msg, raw_data = db.cur.fetchone()
-                msg = None
-                try:
-                    parse_data = parse_binary(str(raw_data))
-                except:
-                    err = 1
-                if err == 0:
-                    for k in range(parallels):
-                        tGlobalVarlist[k].append(parse_data[i*parallels+k])
-                    parse_data = None
-                if j % 20000 == 0:
-                    print(j, "traces were processed.")
-            for m in range(parallels):
-                globalVarlist.append(numpy.var(numpy.array(tGlobalVarlist[m])))
-            print("TEST:", len(globalVarlist))
-            tGlobalVarlist = None
-            tGlobalVarlist = [[] for m in range(parallels)]
-    lenn = len(byteList)
-    for i in range(256):
-        tracesInClass = 0
-        for j in range(lenn):
-            byte, id = byteList[j]
-            if byte == i:
-                cmd = "SELECT message, data FROM trace WHERE id = '" + str(id) + "'"
-                db.cur.execute(cmd)
-                msg, raw_data = db.cur.fetchone()
-                msg = None
-                parse_data = parse_binary(str(raw_data))
-                for d in range(points):
-                    tMeanList[d] = tMeanList[d] + parse_data[d]
-                    tPowerMeanList[d] = tPowerMeanList[d] + parse_data[d]**2
-                    tracesInClass = tracesInClass + 1
-                parse_data = None
-        if tracesInClass > 0:
-            for m in range(points):
-                tPowerMeanList[m] = tPowerMeanList[m]/tracesInClass - (tMeanList[m]/tracesInClass)**2
-            print("Var[E(Y|X)] for class", i, "was calculated")
-            classList.append(tPowerMeanList)
-        else:
-            classCountNotIncluded = classCountNotIncluded + 1
-            print("Class was empty!")
-        tMeanList = [0.0] * points
-        tPowerMeanList = [0.0] * points
-    print("Classes:", 256 - classCountNotIncluded)
-    for i in range(256 - classCountNotIncluded):
-        for j in range(points):
-            if i != 0:
-                classList[0][j] = classList[0][j] + classList[i][j]
-    print("Total Var[E(Y|X)] for all classes was calculated!")
-    lenn = points//parallels*parallels
-    for i in range(lenn):
-        globalVarlist[i] = math.sqrt(classList[0][i]/globalVarlist[i]/lenn)
-    print("NICV function was calculated!")
-    print('Execution time:', time.time() - start_time)
-    t = open("nicv", "w")
-    for i in range(lenn):
-        t.write(str(globalVarlist[i]) + ' ')
-    t.close()
-    plt.bar(range(0, lenn), globalVarlist, color='g')
-    plt.ylabel('NICV')
-    plt.xlabel('samples')
-    plt.colors()
-    plt.show()
-
-
-def nicv2(parallels, timing, db, idList):
+def nicv2(parallels, timing, db, idList, kind, block_size):
     # create a list for each component class:
     classes = [[[] for n in range(256)] for m in range(parallels)]
     # count traces in db:
@@ -166,7 +30,7 @@ def nicv2(parallels, timing, db, idList):
     # initialize ncomponents which will contain number of components
     ncomponents = len(ttrace)
     div_ncomponents = ncomponents // parallels
-    div_nlist = len(idList) // 200
+    div_nlist = len(idList) // block_size
     print('# Traces :', len(idList))
     print('# Components :', ncomponents)
     print('# Cycle steps :', div_ncomponents)
@@ -178,11 +42,11 @@ def nicv2(parallels, timing, db, idList):
     for i in range(div_ncomponents):
         if timing: start_time = time.time()                                                             # TIMING - START
         for f in range(div_nlist):
-            block = str(idList[f * 200: f * 200 + 200])
+            block = str(idList[f * block_size: f * block_size + block_size])
             cmd = "SELECT message, data FROM trace WHERE id in " + block.replace('[', '(').replace(']', ')') + ""
             db.cur.execute(cmd)
             msg_raw_data = list(db.cur.fetchall())
-            for c in range(200):
+            for c in range(block_size):
                 try:
                     trace = parse_binary(msg_raw_data[c][1])
                     msg_p = int(msg_raw_data[c][0][0:2], 16)
@@ -192,6 +56,7 @@ def nicv2(parallels, timing, db, idList):
                 except:
                     print("WARNING: One trace was not processed.")
         print(parallels, ' components were processed.')
+        if timing: nicv_time = time.time()                                                         # NICV_TIMING - START
         for k in range(parallels):
             for c in range(256):
                 if len(classes[k][c]) >= 2:
@@ -201,15 +66,18 @@ def nicv2(parallels, timing, db, idList):
             nicv_list[i * parallels + p] = math.sqrt(svar[p] / tvar[p])
         if i != 0:
             print("NICV was calculated for ", parallels, "components ...")
-
+        if timing:                                                                                  # NICV_TIMING - STOP
+                t = time.time() - nicv_time
+                print("NICV CALC TIME: ", t)
         classes = [[[] for n in range(256)] for m in range(parallels)]
         total = [[] for n in range(parallels)]
         svar = [0.0] * parallels
         tvar = [0.0] * parallels
-        if timing:                                                                                   # TIMING - STOP
+        if timing:                                                                                       # TIMING - STOP
             t = time.time() - start_time
             print("ITERATION TIME: ", t)
-            print("ESTIMATED TOTAL: ", (t * div_ncomponents / 60 / 60), "h.")
+            print("ESTIMATED TOTAL: ", (t * div_ncomponents / 60), "min.")
+            time.sleep(7)
             timing = False
 
     print("NICV was calculated for all components!")
@@ -224,67 +92,81 @@ def nicv2(parallels, timing, db, idList):
     plt.colors()
     plt.show()
 
-def kmeans(indir, pattern, outdir, nicv_fpath, nfeatures, timing):
-    ntraces = len(os.listdir(indir))
-    vectors = []*ntraces
-    nicv_list = []
+
+def kmeans(db, idList, nicvList, isTest, kind, timing):
     # INITIALIZATION
-    if not os.path.isdir(indir):
-        print(indir + " does not exist !!")
-        sys.exit(1)
-    elif len(os.listdir(indir)) == 0:
-        print(indir + " is empty !!")
-        sys.exit(1)
-    else:
-        tdb = TracesFilesystem(indir)
-    if not os.path.isdir(outdir):
-        print(outdir + " does not exist !!")
-        sys.exit(1)
-    try:
-        re.match(pattern, '')
-    except: # pattern is incorrect
-        print('Pattern ', pattern, ' is incorrect!')
-        sys.exit(1)
-    if not os.path.isfile(nicv_fpath):
-        print('Features stat file does not exist !!')
-        sys.exit(1)
-    else:
-        print('Founded stst file ' + nicv_fpath)
-    with open(nicv_fpath, 'r') as f:
-        nicv_list = list(f)
-
-    print(nicv_list)
-    features = heapq.nlargest(5, nicv_list)
+    vectors = [('', [])] * len(idList)
+    features = np.argsort(nicvList)[::-1][:5]
+    keys = []
     print('Stat was loaded.')
-
-    tdb = TracesFilesystem(indir)
-    for i in range(ntraces):
+    if isinstance(isTest, int):
+        mode = 'prod'
+        print('Clusterization for', kind, '...')
+        print('Clusters:', str(isTest))
+        for i in range(isTest):
+            keys.append(i)
+        print(str(isTest), 'phantom keys are created.')
+        time.sleep(5)
+    elif isTest == True:
+        mode = 'test'
+        cmd = "SELECT DISTINCT key FROM trace WHERE kind = '" + kind + "'"
+        db.cur.execute(cmd)
+        keys = db.cur.fetchall()
+        nclusters = len(keys)
+        ncomponents = 0
+        print('Test clusterization for', kind, '...')
+        print('Clusters:', str(nclusters))
+        print('Keys:', keys)
+        time.sleep(5)
+    for i in idList:
         try:
-            msg, crypt, trace = tdb.get_trace()
-            ttrace = trace
+            cmd = "SELECT message, data FROM trace WHERE id = '" + str(i) + "'"
+            db.cur.execute(cmd)
+            one = db.cur.fetchone()
+            msg, raw_data = one
+            ncomponents = len(parse_binary(raw_data))
+            print("OK!")
             break
         except:
-            pass
-    ncomponents = len(ttrace)
-    tdb.set_counter(0)
+            print("WARNING: Trace", str(i), "was not processed.")
+
     # VECTORS GENERATION
-    # TODO: re.search('(?<=k=)(.*)(?=_m)', fileName).group(0)
-    for i in range(ntraces):
+    for i in range(len(idList)):
         try:
-            msg, crypt, trace = tdb.get_trace()
-            print(ncomponents, features)
-            for j in range(ncomponents):
-                if j in (features):
-                    vectors[i].append(trace[j])
+            cmd = "SELECT key, data FROM trace WHERE id = '" + str(idList[i]) + "'"
+            db.cur.execute(cmd)
+            one = db.cur.fetchone()
+            key, raw_data = one
+            tmp = []
+            for j in features:
+                tmp.append(parse_binary(raw_data)[j])
+            vectors[i] = tuple((key.rstrip().lstrip(), tmp))
         except:
-            print("WARNING: Trace", i, "was not processed.")
+            print("WARNING: Trace", str(i), "was not processed.")
+    # CLUSTERS GENERATION
+    data = np.array([x[1] for x in vectors])
+    centroids, positions = sp.kmeans2(data, 3, 1, 'warn', 'random')
 
+    # CLUSTERS LINKING
+    if mode == 'prod':
+        for i in range(len(keys)):
+            for j in positions:
+                if j == i:
+                    keys[i] = tuple
 
-def test():
+def test(TEST):
     db = Database()
     db.connect()
-    idList = db.get_trace_idlist('des_first')
-    nicv2(100, True, db, idList[0:200])
-
+    kind = 'des_first'
+    idList = db.get_trace_idlist(kind)
+    if TEST == 0:
+        nicv2(20, True, db, idList[0:10000], kind, 1)
+    elif TEST == 1:
+        nicvList = [0.95, 0.7, 0, 0.4, 0.3, 0.2, 0.1, 0.34]
+        kmeans(db, idList[0:100], nicvList, 2, kind, False)
+    elif TEST == 2:
+        nicvList = nicv2(20, True, db, idList[0:100], kind, 2)
+        kmeans(db, idList[0:100], nicvList, True, kind, False)
 if __name__ == "__main__":
-    test()
+    TEST = 1
+    test(TEST)
