@@ -1,0 +1,8 @@
+<resources>
+    <string name="app_name">SCAsandbox</string>
+    <string name="action_settings">Settings</string>
+    <string name="stop_recording">Stop recording</string>
+    <string name="stop_recording_button">Yes, I have no choice.</string>
+    <string name="settings_delay_text">Encryption Delay</string>
+    <string name="settings_ok_button">Done</string>
+</resources>
