@@ -4,9 +4,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
-import android.os.PersistableBundle;
-import android.support.v7.app.AppCompatActivity;
-import android.support.v7.widget.Toolbar;
+import android.support.v7.app.ActionBarActivity;
 import android.view.View;
 import android.widget.Button;
 import android.widget.NumberPicker;
@@ -14,7 +12,7 @@ import android.widget.NumberPicker;
 /**
  * Created by pborisenko on 3/22/2016.
  */
-public class SettingsActivity extends AppCompatActivity {
+public class SettingsActivity extends ActionBarActivity {
 
     private final static String PREFS = "com.domain.pborisenko.scasandbox";
     private final static String DELAY_PARM = "delay";

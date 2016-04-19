@@ -1,15 +1,11 @@
 package com.domain.pborisenko.scasandbox;
 
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.SharedPreferences;
-import android.content.pm.PackageManager;
 import android.os.AsyncTask;
-import android.os.Environment;
-import android.provider.ContactsContract;
-import android.support.v4.app.ActivityCompat;
-import android.support.v7.app.AlertDialog;
 import android.util.Log;
 import android.widget.Toast;
 
@@ -24,11 +20,8 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.InputStream;
-import java.io.OutputStreamWriter;
-import java.sql.Time;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.jar.Manifest;
 
 import javax.crypto.Cipher;
 import javax.crypto.SecretKey;
@@ -48,13 +41,9 @@ public class AsyncEncryption extends AsyncTask<Algorithm, Void, Integer> {
     private final static String RET_CODE_1 = "Configuration file is missing";
     private final static String RET_CODE_2 = "Encryption failed. Please turn on debug to investigate.";
     private final static String RET_CODE_3 = "Error writing to timestamp file.";
+    private final static String RET_CODE_4 = "Can't create or delete timestamp file.";
     private final static String PREFS = "com.domain.pborisenko.scasandbox";
     private final static String TIMESTAMP_FILENAME = "SCASandbox_stamp.txt";
-    private final static String[] PERMISSIONS_STORAGE = {
-            android.Manifest.permission.READ_EXTERNAL_STORAGE,
-            android.Manifest.permission.WRITE_EXTERNAL_STORAGE
-    };
-
 
     private Activity mActivity;
     private Integer delayTime = 1;
@@ -81,8 +70,24 @@ public class AsyncEncryption extends AsyncTask<Algorithm, Void, Integer> {
         }
 
         try {
-            File timeStampFile = new File(mActivity.getFilesDir(), TIMESTAMP_FILENAME);
-            outputStream = mActivity.openFileOutput(TIMESTAMP_FILENAME, Context.MODE_PRIVATE);
+            Boolean fileDeleted = true;
+            File timeStampFile;
+            File mydir = mActivity.getDir("SCASandbox", Context.MODE_PRIVATE); //Creating an internal dir;
+            timeStampFile = new File(mydir, TIMESTAMP_FILENAME); //Getting a file within the dir.
+            outputStream = new FileOutputStream(timeStampFile);
+            /*
+            if (timeStampFile.exists()) {
+                fileDeleted = timeStampFile.delete();
+            }
+
+            if (fileDeleted) {
+                timeStampFile = new File(mydir, TIMESTAMP_FILENAME);
+                outputStream = new FileOutputStream(timeStampFile);
+            } else {
+                retCode = 4;
+                return retCode;
+            }*/
+
         } catch (Exception e) {
             e.printStackTrace();
             retCode = 3;
@@ -109,8 +114,10 @@ public class AsyncEncryption extends AsyncTask<Algorithm, Void, Integer> {
 
                                     Thread.sleep(1000 * delayTime / 2);
 
-                                    Log.d(TAG, "Encrypted: " + cipherText.toString() + "," + Long.toString(time));
-                                    str = cipherText.toString() + "," + Long.toString(time) + "\n";
+                                    Log.d(TAG, "Encrypted: " + bytesToHex(s) + ","
+                                            + bytesToHex(cipherText)
+                                            + "," + Long.toString(time));
+                                    str = bytesToHex(s) + "," + bytesToHex(cipherText) + "," + Long.toString(time) + "\n";
                                     outputStream.write(str.getBytes());
 
                                     Thread.sleep(1000 * delayTime / 2);
@@ -142,12 +149,15 @@ public class AsyncEncryption extends AsyncTask<Algorithm, Void, Integer> {
     @Override
     protected void onPreExecute() {
         super.onPreExecute();
-
+        /*
         int permission = ActivityCompat.checkSelfPermission(mActivity,
                 android.Manifest.permission.WRITE_EXTERNAL_STORAGE);
         if (permission != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(mActivity, PERMISSIONS_STORAGE, 1);
         }
+        */
+        Toast.makeText(mActivity, "Stamp File: " +  mActivity.getFilesDir()
+                .getAbsolutePath(), Toast.LENGTH_LONG).show();
 
         mAld = new AlertDialog.Builder(mActivity)
                 .setTitle(R.string.stop_recording)
@@ -180,6 +190,10 @@ public class AsyncEncryption extends AsyncTask<Algorithm, Void, Integer> {
                 mAld.cancel();
                 Toast.makeText(mActivity, RET_CODE_3, Toast.LENGTH_LONG).show();
                 Log.d(TAG, RET_CODE_3);
+            case 4:
+                mAld.cancel();
+                Toast.makeText(mActivity, RET_CODE_4, Toast.LENGTH_LONG).show();
+                Log.d(TAG, RET_CODE_4);
         }
     }
 
@@ -214,6 +228,17 @@ public class AsyncEncryption extends AsyncTask<Algorithm, Void, Integer> {
                     + Character.digit(s.charAt(i+1), 16));
         }
         return data;
+    }
+
+    public static String bytesToHex(byte[] bytes) {
+        final char[] hexArray = "0123456789ABCDEF".toCharArray();
+        char[] hexChars = new char[bytes.length * 2];
+        for ( int j = 0; j < bytes.length; j++ ) {
+            int v = bytes[j] & 0xFF;
+            hexChars[j * 2] = hexArray[v >>> 4];
+            hexChars[j * 2 + 1] = hexArray[v & 0x0F];
+        }
+        return new String(hexChars);
     }
 
     private class Configuration {
