@@ -5,6 +5,7 @@ import android.os.Bundle;
 import android.support.v7.app.ActionBarActivity;
 import android.support.v7.widget.Toolbar;
 import android.util.Log;
+import android.view.ViewGroup.LayoutParams;
 import android.view.View;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -34,6 +35,7 @@ public class MainActivity extends ActionBarActivity {
         for (Algorithm i : Algorithm.values()) {
             TextView t = new TextView(this);
             t.setText(i.name());
+            t.setLayoutParams(new LayoutParams(LayoutParams.FILL_PARENT,LayoutParams.WRAP_CONTENT));
             t.setTag(i);
             t.setBackgroundColor(getResources().getColor(R.color.colorUnSelectedAlgorithm));
             t.setTextSize(R.dimen.text_height);
@@ -66,7 +68,7 @@ public class MainActivity extends ActionBarActivity {
         fab.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                if (selectedAlgorithm != null) {
+                if (selectedAlgorithm != null) {;
                     //create async task for trace recording
                     Log.d(TAG, "Async process creation for trace recording ...");
                     currentEncryptionTask = new AsyncEncryption(MainActivity.this);

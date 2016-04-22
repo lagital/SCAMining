@@ -17,7 +17,6 @@
         android:layout_height="wrap_content"
         android:orientation="vertical"
         android:id="@+id/algorithms_list">
-
     </LinearLayout>
 
     <Button

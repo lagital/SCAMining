@@ -20,6 +20,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.InputStream;
+import java.io.OutputStreamWriter;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -42,6 +43,7 @@ public class AsyncEncryption extends AsyncTask<Algorithm, Void, Integer> {
     private final static String RET_CODE_2 = "Encryption failed. Please turn on debug to investigate.";
     private final static String RET_CODE_3 = "Error writing to timestamp file.";
     private final static String RET_CODE_4 = "Can't create or delete timestamp file.";
+    private final static String PLEASE_CREATE = "Please create it in ";
     private final static String PREFS = "com.domain.pborisenko.scasandbox";
     private final static String TIMESTAMP_FILENAME = "SCASandbox_stamp.txt";
 
@@ -53,8 +55,11 @@ public class AsyncEncryption extends AsyncTask<Algorithm, Void, Integer> {
     private List<IvParameterSpec> initialVectors = new ArrayList<IvParameterSpec>();
     private int retCode = 0;
     private FileOutputStream outputStream;
-    private long time;
+    private OutputStreamWriter outputStreamWriter;
+    private long time_start;
+    private long time_end;
     private Boolean continueWriting = true;
+    private File targetFile;
 
     public AsyncEncryption (Activity activity){
         mActivity = activity;
@@ -64,29 +69,31 @@ public class AsyncEncryption extends AsyncTask<Algorithm, Void, Integer> {
         Log.d(TAG, "doInBackground ...");
         try {
             Configuration conf = new Configuration(parms[0]);
-            initComponents(conf, parms[0]);
+            if (retCode != 0) {
+                return retCode;
+            } else {
+                initComponents(conf, parms[0]);
+            }
+            if (retCode != 0) {
+                return retCode;
+            }
         } catch (Exception e) {
             e.printStackTrace();
         }
 
         try {
-            Boolean fileDeleted = true;
-            File timeStampFile;
-            File mydir = mActivity.getDir("SCASandbox", Context.MODE_PRIVATE); //Creating an internal dir;
-            timeStampFile = new File(mydir, TIMESTAMP_FILENAME); //Getting a file within the dir.
-            outputStream = new FileOutputStream(timeStampFile);
-            /*
-            if (timeStampFile.exists()) {
-                fileDeleted = timeStampFile.delete();
+            targetFile = new File(mActivity.getExternalFilesDir(null), TIMESTAMP_FILENAME);
+            Boolean result;
+            result = targetFile.delete();
+            result = targetFile.createNewFile();
+
+            if (!result) {
+                retCode = 3;
+                return retCode;
             }
 
-            if (fileDeleted) {
-                timeStampFile = new File(mydir, TIMESTAMP_FILENAME);
-                outputStream = new FileOutputStream(timeStampFile);
-            } else {
-                retCode = 4;
-                return retCode;
-            }*/
+            outputStream = new FileOutputStream(targetFile);
+            outputStreamWriter = new OutputStreamWriter (outputStream);
 
         } catch (Exception e) {
             e.printStackTrace();
@@ -105,20 +112,26 @@ public class AsyncEncryption extends AsyncTask<Algorithm, Void, Integer> {
                     for (byte [] s : plainTexts) {
                         for (SecretKey k : secretKeys) {
                             for (IvParameterSpec iv : initialVectors) {
-                                Cipher cipher = null;
+                                Cipher cipher;
                                 try {
                                     cipher = Cipher.getInstance(TDES_INSTANCE);
                                     cipher.init(Cipher.ENCRYPT_MODE, k, iv);
-                                    time = System.currentTimeMillis();
+                                    time_start = System.currentTimeMillis();
                                     byte[] cipherText = cipher.doFinal(s);
+                                    time_end = System.currentTimeMillis();
 
                                     Thread.sleep(1000 * delayTime / 2);
 
+                                    str = bytesToHex(s) + "," + bytesToHex(cipherText) + "," + Long.toString(time_start) + "\n"
+                                            + bytesToHex(s) + "," + bytesToHex(cipherText) + "," + Long.toString(time_end) + "\n";
+                                    outputStreamWriter.write(str);
+
                                     Log.d(TAG, "Encrypted: " + bytesToHex(s) + ","
                                             + bytesToHex(cipherText)
-                                            + "," + Long.toString(time));
-                                    str = bytesToHex(s) + "," + bytesToHex(cipherText) + "," + Long.toString(time) + "\n";
-                                    outputStream.write(str.getBytes());
+                                            + "," + Long.toString(time_start));
+                                    Log.d(TAG, "Encrypted: " + bytesToHex(s) + ","
+                                            + bytesToHex(cipherText)
+                                            + "," + Long.toString(time_end));
 
                                     Thread.sleep(1000 * delayTime / 2);
                                 } catch (Exception e) {
@@ -134,37 +147,24 @@ public class AsyncEncryption extends AsyncTask<Algorithm, Void, Integer> {
         }
 
         try {
-            outputStream.close();
+            outputStreamWriter.close();
         } catch (Exception e) {
             e.printStackTrace();
             retCode = 3;
         }
 
-        // final String encodedCipherText = new sun.misc.BASE64Encoder()
-        // .encode (cipherText);
-        // return (cipherText);
         return retCode;
     }
 
     @Override
     protected void onPreExecute() {
         super.onPreExecute();
-        /*
-        int permission = ActivityCompat.checkSelfPermission(mActivity,
-                android.Manifest.permission.WRITE_EXTERNAL_STORAGE);
-        if (permission != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(mActivity, PERMISSIONS_STORAGE, 1);
-        }
-        */
-        Toast.makeText(mActivity, "Stamp File: " +  mActivity.getFilesDir()
-                .getAbsolutePath(), Toast.LENGTH_LONG).show();
 
         mAld = new AlertDialog.Builder(mActivity)
                 .setTitle(R.string.stop_recording)
                 .setMessage("Are you sure you want to stop recording?")
                 .setPositiveButton(R.string.stop_recording_button, new DialogInterface.OnClickListener() {
                     public void onClick(DialogInterface dialog, int which) {
-                        //AsyncEncryption.this.cancel(true);
                         continueWriting = false;
                         Log.d(TAG, "Trace recording was cancelled.");
                     }
@@ -177,10 +177,15 @@ public class AsyncEncryption extends AsyncTask<Algorithm, Void, Integer> {
         Log.d(TAG, "onPostExecute ...");
 
         switch (retCode) {
-            case 0: return;
+            case 0:
+                Log.d(TAG, "File path: " + targetFile.getAbsolutePath());
+                Toast.makeText(mActivity, targetFile.getAbsolutePath(), Toast.LENGTH_LONG).show();
+                return;
             case 1:
                 mAld.cancel();
                 Toast.makeText(mActivity, RET_CODE_1, Toast.LENGTH_LONG).show();
+                Toast.makeText(mActivity, PLEASE_CREATE + mActivity.getExternalFilesDir(null),
+                        Toast.LENGTH_SHORT).show();
                 Log.d(TAG, RET_CODE_1);
             case 2:
                 mAld.cancel();
@@ -195,6 +200,7 @@ public class AsyncEncryption extends AsyncTask<Algorithm, Void, Integer> {
                 Toast.makeText(mActivity, RET_CODE_4, Toast.LENGTH_LONG).show();
                 Log.d(TAG, RET_CODE_4);
         }
+
     }
 
     private Void initComponents(Configuration config,
@@ -256,21 +262,21 @@ public class AsyncEncryption extends AsyncTask<Algorithm, Void, Integer> {
         private Configuration (Algorithm alg) {
             Log.d(TAG, "In config constructor ...");
             File file;
-            String path = System.getenv("SECONDARY_STORAGE") + "/" + alg.name() + CONFIG;
             try {
                 switch (alg) {
                     case TDES: {
-                        file = new File(path);
+                        file = new File(mActivity.getExternalFilesDir(null), alg.name() + CONFIG);
                     }
 
                     default: {
-                        file = new File(path);
+                        file = new File(mActivity.getExternalFilesDir(null), alg.name() + CONFIG);
                     }
                 }
 
                 if (!file.exists()) {
                     retCode = 1;
-                    Log.d(TAG, RET_CODE_1 + ":" + path);
+                    Log.d(TAG, RET_CODE_1 + ": " + mActivity.getExternalFilesDir(null) + "/"
+                            + alg.name() + CONFIG);
                     return;
                 }
 
@@ -313,7 +319,6 @@ public class AsyncEncryption extends AsyncTask<Algorithm, Void, Integer> {
 
             SharedPreferences prefs = mActivity.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
             delayTime = prefs.getInt(DELAY_PARM, 1);
-
         }
     }
 }
