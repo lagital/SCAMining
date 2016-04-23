@@ -23,7 +23,7 @@
             android:layout_width="wrap_content"
             android:layout_height="match_parent"
             android:id="@+id/delay_setting_text"
-            android:text="@string/settings_delay_text"
+            android:text="@string/settings_delay_title"
             android:visibility="visible"
             android:textSize="@dimen/text_height"
             android:layout_gravity="center" />
@@ -35,6 +35,22 @@
             android:id="@+id/delay_setting_picker"
             android:visibility="visible">
         </NumberPicker>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:id="@+id/open_text_length_input"
+            android:text="@string/plaintext_length_input_title"
+            android:visibility="visible"
+            android:textSize="@dimen/text_height"
+            android:layout_gravity="center" />
+
+        <EditText
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:numeric="integer"
+            android:id="@+id/plaintext_length_input_window"
+            android:textSize="@dimen/input_text_height"/>
 
     </LinearLayout>
 

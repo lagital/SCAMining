@@ -5,22 +5,25 @@ import android.os.Bundle;
 import android.support.v7.app.ActionBarActivity;
 import android.support.v7.widget.Toolbar;
 import android.util.Log;
-import android.view.ViewGroup.LayoutParams;
 import android.view.View;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
 import android.widget.Button;
-import android.widget.LinearLayout;
+import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
+
+import java.util.ArrayList;
 
 public class MainActivity extends ActionBarActivity {
 
     private final static String TAG = "MainActivity";
     private final static String NO_ALG_SELECTED = "Please choose an algorithm!";
 
-    private View selectedAlgorithm;
-    private LinearLayout algorithmsList;
+    private Algorithm selectedAlgorithm;
+    private ListView algorithmsList;
     private AsyncEncryption currentEncryptionTask;
 
     @Override
@@ -30,39 +33,28 @@ public class MainActivity extends ActionBarActivity {
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
 
-        //fill the list of supported algorithms
-        algorithmsList = (LinearLayout) findViewById(R.id.algorithms_list);
+        algorithmsList = (ListView) findViewById(R.id.algorithms_list);
+        ArrayList<String> stringAlgorithmsList = new ArrayList<String>();
         for (Algorithm i : Algorithm.values()) {
-            TextView t = new TextView(this);
-            t.setText(i.name());
-            t.setLayoutParams(new LayoutParams(LayoutParams.FILL_PARENT,LayoutParams.WRAP_CONTENT));
-            t.setTag(i);
-            t.setBackgroundColor(getResources().getColor(R.color.colorUnSelectedAlgorithm));
-            t.setTextSize(R.dimen.text_height);
-            t.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    if (!v.isSelected()) {
-                        for (int i = 0; i < algorithmsList.getChildCount(); i++) {
-                            View cv = algorithmsList.getChildAt(i);
-                            cv.setSelected(false);
-                            v.setBackgroundColor(getResources().getColor(R.color.colorUnSelectedAlgorithm));
-                        }
-                        v.setSelected(true);
-                        v.setBackgroundColor(getResources().getColor(R.color.colorSelectedAlgorithm));
-                        selectedAlgorithm = v;
-                    }
-                }
-            });
-            algorithmsList.addView(t);
-            Log.d(TAG, t.getText() + " algorithm is supported.");
+            stringAlgorithmsList.add(i.name());
+            Log.d(TAG, i.name() + " algorithm is supported.");
         }
-
-        algorithmsList.invalidate();
-
-        //temporary fix:
-        selectedAlgorithm = new TextView(this);
-        selectedAlgorithm.setTag(Algorithm.TDES);
+        ArrayAdapter<String> adapter = new ArrayAdapter<String>(this, R.layout.algorithm_list_item,
+                stringAlgorithmsList);
+        algorithmsList.setAdapter(adapter);
+        algorithmsList.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+                for (int i = 0; i < algorithmsList.getChildCount(); i++) {
+                    View cv = algorithmsList.getChildAt(i);
+                    cv.setSelected(false);
+                    view.setBackgroundColor(getResources().getColor(R.color.colorUnSelectedAlgorithm));
+                }
+                view.setBackgroundColor(getResources().getColor(R.color.colorSelectedAlgorithm));
+                TextView t = (TextView) view;
+                selectedAlgorithm = Algorithm.valueOf(t.getText().toString());
+            }
+        });
 
         Button fab = (Button) findViewById(R.id.fab);
         fab.setOnClickListener(new View.OnClickListener() {
@@ -72,7 +64,7 @@ public class MainActivity extends ActionBarActivity {
                     //create async task for trace recording
                     Log.d(TAG, "Async process creation for trace recording ...");
                     currentEncryptionTask = new AsyncEncryption(MainActivity.this);
-                    currentEncryptionTask.execute((Algorithm) selectedAlgorithm.getTag());
+                    currentEncryptionTask.execute(selectedAlgorithm);
                 } else {
                     Toast.makeText(MainActivity.this, NO_ALG_SELECTED, Toast.LENGTH_SHORT).show();
                 }

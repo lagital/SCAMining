@@ -23,6 +23,7 @@ import java.io.InputStream;
 import java.io.OutputStreamWriter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
 
 import javax.crypto.Cipher;
 import javax.crypto.SecretKey;
@@ -38,7 +39,9 @@ import javax.xml.parsers.DocumentBuilderFactory;
 public class AsyncEncryption extends AsyncTask<Algorithm, Void, Integer> {
 
     private final static String TAG = "AsyncEncryption";
+
     private final static String TDES_INSTANCE = "DESede/CBC/PKCS5Padding";
+
     private final static String RET_CODE_1 = "Configuration file is missing";
     private final static String RET_CODE_2 = "Encryption failed. Please turn on debug to investigate.";
     private final static String RET_CODE_3 = "Error writing to timestamp file.";
@@ -49,6 +52,7 @@ public class AsyncEncryption extends AsyncTask<Algorithm, Void, Integer> {
 
     private Activity mActivity;
     private Integer delayTime = 1;
+    private Integer plaintextLegth = 128;
     private AlertDialog mAld;
     private List<byte[]> plainTexts = new ArrayList<byte[]>();
     private List<SecretKey> secretKeys = new ArrayList<SecretKey>();
@@ -58,8 +62,12 @@ public class AsyncEncryption extends AsyncTask<Algorithm, Void, Integer> {
     private OutputStreamWriter outputStreamWriter;
     private long time_start;
     private long time_end;
+    private Boolean randomPlainTexts = false;
+    private Boolean randomKeys = false;
     private Boolean continueWriting = true;
     private File targetFile;
+    private Algorithm alg;
+    private String algorithmInstance;
 
     public AsyncEncryption (Activity activity){
         mActivity = activity;
@@ -68,11 +76,12 @@ public class AsyncEncryption extends AsyncTask<Algorithm, Void, Integer> {
     protected Integer doInBackground(Algorithm...parms) {
         Log.d(TAG, "doInBackground ...");
         try {
-            Configuration conf = new Configuration(parms[0]);
+            alg = parms[0];
+            Configuration conf = new Configuration(alg);
             if (retCode != 0) {
                 return retCode;
             } else {
-                initComponents(conf, parms[0]);
+                initComponents(conf, alg);
             }
             if (retCode != 0) {
                 return retCode;
@@ -109,12 +118,26 @@ public class AsyncEncryption extends AsyncTask<Algorithm, Void, Integer> {
         switch (parms[0]) {
             case TDES: {
                 while (continueWriting) {
+                    byte[] randomKey;
+
+                    if (randomPlainTexts) {
+                        plainTexts.clear();
+                        plainTexts.add(hexStringToByteArray(getRandomHexString(
+                                Math.round(plaintextLegth/4))));
+                    }
+                    if (randomKeys) {
+                        secretKeys.clear();
+                        randomKey = hexStringToByteArray(getRandomHexString(Math.round(128 / 4)));
+                        secretKeys.add(new SecretKeySpec(randomKey,
+                                0, randomKey.length, alg.name()));
+                    }
+
                     for (byte [] s : plainTexts) {
                         for (SecretKey k : secretKeys) {
                             for (IvParameterSpec iv : initialVectors) {
                                 Cipher cipher;
                                 try {
-                                    cipher = Cipher.getInstance(TDES_INSTANCE);
+                                    cipher = Cipher.getInstance(algorithmInstance);
                                     cipher.init(Cipher.ENCRYPT_MODE, k, iv);
                                     time_start = System.currentTimeMillis();
                                     byte[] cipherText = cipher.doFinal(s);
@@ -233,28 +256,25 @@ public class AsyncEncryption extends AsyncTask<Algorithm, Void, Integer> {
         for (String i : config.ivs) {
             initialVectors.add(new IvParameterSpec(hexStringToByteArray(i)));
         }
+
+        if (plainTexts.isEmpty()) {
+            randomPlainTexts = true;
+            Log.d(TAG, "Plain texts will be random.");
+        }
+
+        if (secretKeys.isEmpty()) {
+            randomKeys = true;
+            Log.d(TAG, "Keys will be random.");
+        }
+
+        switch (alg) {
+            case TDES:
+                algorithmInstance = TDES_INSTANCE;
+            default:
+                algorithmInstance = TDES_INSTANCE;
+        }
+
         return null;
-    }
-
-    public static byte[] hexStringToByteArray(String s) {
-        int len = s.length();
-        byte[] data = new byte[len / 2];
-        for (int i = 0; i < len; i += 2) {
-            data[i / 2] = (byte) ((Character.digit(s.charAt(i), 16) << 4)
-                    + Character.digit(s.charAt(i+1), 16));
-        }
-        return data;
-    }
-
-    public static String bytesToHex(byte[] bytes) {
-        final char[] hexArray = "0123456789ABCDEF".toCharArray();
-        char[] hexChars = new char[bytes.length * 2];
-        for ( int j = 0; j < bytes.length; j++ ) {
-            int v = bytes[j] & 0xFF;
-            hexChars[j * 2] = hexArray[v >>> 4];
-            hexChars[j * 2 + 1] = hexArray[v & 0x0F];
-        }
-        return new String(hexChars);
     }
 
     private class Configuration {
@@ -264,6 +284,7 @@ public class AsyncEncryption extends AsyncTask<Algorithm, Void, Integer> {
         private final static String PLAINTEXT_NODE = "Plaintext";
         private final static String IV_NODE = "InitialVector";
         private final static String DELAY_PARM = "delay";
+        private final static String PLAINTEXT_LENGTH_PARM = "plaintext_length";
 
         public List<String> plainTexts = new ArrayList<String>();
         public List<String> ivs = new ArrayList<String>();
@@ -329,6 +350,37 @@ public class AsyncEncryption extends AsyncTask<Algorithm, Void, Integer> {
 
             SharedPreferences prefs = mActivity.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
             delayTime = prefs.getInt(DELAY_PARM, 1);
+            plaintextLegth = prefs.getInt(PLAINTEXT_LENGTH_PARM, 128);
         }
+    }
+
+    public static byte[] hexStringToByteArray(String s) {
+        int len = s.length();
+        byte[] data = new byte[len / 2];
+        for (int i = 0; i < len; i += 2) {
+            data[i / 2] = (byte) ((Character.digit(s.charAt(i), 16) << 4)
+                    + Character.digit(s.charAt(i+1), 16));
+        }
+        return data;
+    }
+
+    public static String bytesToHex(byte[] bytes) {
+        final char[] hexArray = "0123456789ABCDEF".toCharArray();
+        char[] hexChars = new char[bytes.length * 2];
+        for ( int j = 0; j < bytes.length; j++ ) {
+            int v = bytes[j] & 0xFF;
+            hexChars[j * 2] = hexArray[v >>> 4];
+            hexChars[j * 2 + 1] = hexArray[v & 0x0F];
+        }
+        return new String(hexChars);
+    }
+
+    private String getRandomHexString(int numchars){
+        Random r = new Random();
+        StringBuffer sb = new StringBuffer();
+        while(sb.length() < numchars){
+            sb.append(Integer.toHexString(r.nextInt()));
+        }
+        return sb.toString().substring(0, numchars);
     }
 }
