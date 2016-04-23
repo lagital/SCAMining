@@ -45,7 +45,7 @@ public class AsyncEncryption extends AsyncTask<Algorithm, Void, Integer> {
     private final static String RET_CODE_4 = "Can't create or delete timestamp file.";
     private final static String PLEASE_CREATE = "Please create it in ";
     private final static String PREFS = "com.domain.pborisenko.scasandbox";
-    private final static String TIMESTAMP_FILENAME = "SCASandbox_stamp.txt";
+    private final static String TIMESTAMP_FILENAME = "SCASandbox_stamp.csv";
 
     private Activity mActivity;
     private Integer delayTime = 1;
@@ -122,14 +122,24 @@ public class AsyncEncryption extends AsyncTask<Algorithm, Void, Integer> {
 
                                     Thread.sleep(1000 * delayTime / 2);
 
-                                    str = bytesToHex(s) + "," + bytesToHex(cipherText) + "," + Long.toString(time_start) + "\n"
-                                            + bytesToHex(s) + "," + bytesToHex(cipherText) + "," + Long.toString(time_end) + "\n";
+                                    str = bytesToHex(s) + ","
+                                            + bytesToHex(k.getEncoded()) + ","
+                                            + bytesToHex(cipherText) + ","
+                                            + Long.toString(time_start) + "\n"
+                                            + bytesToHex(s) + ","
+                                            + bytesToHex(k.getEncoded()) + ","
+                                            + bytesToHex(cipherText) + ","
+                                            + Long.toString(time_end) + "\n";
                                     outputStreamWriter.write(str);
 
-                                    Log.d(TAG, "Encrypted: " + bytesToHex(s) + ","
+                                    Log.d(TAG, "Encrypted: "
+                                            + bytesToHex(s) + ","
+                                            + bytesToHex(k.getEncoded()) + ","
                                             + bytesToHex(cipherText)
                                             + "," + Long.toString(time_start));
-                                    Log.d(TAG, "Encrypted: " + bytesToHex(s) + ","
+                                    Log.d(TAG, "Encrypted: "
+                                            + bytesToHex(s) + ","
+                                            + bytesToHex(k.getEncoded()) + ","
                                             + bytesToHex(cipherText)
                                             + "," + Long.toString(time_end));
 
