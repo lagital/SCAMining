@@ -9,5 +9,6 @@
     <!-->on Settings Activity</-->
     <string name="settings_delay_title">Encryption Delay</string>
     <string name="plaintext_length_input_title">Random Plaintext Length</string>
+    <string name="known_signature_count_input">Known Sig-es Count</string>
     <string name="settings_ok_button">Done</string>
 </resources>

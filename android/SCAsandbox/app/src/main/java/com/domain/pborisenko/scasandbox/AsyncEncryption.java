@@ -53,6 +53,8 @@ public class AsyncEncryption extends AsyncTask<Algorithm, Void, Integer> {
     private Activity mActivity;
     private Integer delayTime = 1;
     private Integer plaintextLegth = 128;
+    private Integer signatureCounter = 10;
+    private Boolean countSignatures = false;
     private AlertDialog mAld;
     private List<byte[]> plainTexts = new ArrayList<byte[]>();
     private List<SecretKey> secretKeys = new ArrayList<SecretKey>();
@@ -114,22 +116,27 @@ public class AsyncEncryption extends AsyncTask<Algorithm, Void, Integer> {
         }
 
         String str;
+        Integer signatureIterator = 0;
 
         switch (parms[0]) {
             case TDES: {
                 while (continueWriting) {
-                    byte[] randomKey;
 
-                    if (randomPlainTexts) {
-                        plainTexts.clear();
-                        plainTexts.add(hexStringToByteArray(getRandomHexString(
-                                Math.round(plaintextLegth/4))));
-                    }
-                    if (randomKeys) {
-                        secretKeys.clear();
-                        randomKey = hexStringToByteArray(getRandomHexString(Math.round(128 / 4)));
-                        secretKeys.add(new SecretKeySpec(randomKey,
-                                0, randomKey.length, alg.name()));
+                    if (countSignatures && signatureIterator.equals(signatureCounter)) {
+                        byte[] randomKey;
+                        if (randomPlainTexts) {
+                            plainTexts.clear();
+                            plainTexts.add(hexStringToByteArray(getRandomHexString(
+                                    Math.round(plaintextLegth / 4))));
+                        }
+                        if (randomKeys) {
+                            secretKeys.clear();
+                            randomKey = hexStringToByteArray(getRandomHexString(Math.round(128 / 4)));
+                            secretKeys.add(new SecretKeySpec(randomKey,
+                                    0, randomKey.length, alg.name()));
+                        }
+                    } else {
+                        signatureIterator += 1;
                     }
 
                     for (byte [] s : plainTexts) {
@@ -285,6 +292,8 @@ public class AsyncEncryption extends AsyncTask<Algorithm, Void, Integer> {
         private final static String IV_NODE = "InitialVector";
         private final static String DELAY_PARM = "delay";
         private final static String PLAINTEXT_LENGTH_PARM = "plaintext_length";
+        private final static String SIGNATURE_COUNTER = "signature_counter";
+        private final static String SIGNATURE_COUNTER_FLAG = "signature_counter_flag";
 
         public List<String> plainTexts = new ArrayList<String>();
         public List<String> ivs = new ArrayList<String>();
@@ -351,6 +360,14 @@ public class AsyncEncryption extends AsyncTask<Algorithm, Void, Integer> {
             SharedPreferences prefs = mActivity.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
             delayTime = prefs.getInt(DELAY_PARM, 1);
             plaintextLegth = prefs.getInt(PLAINTEXT_LENGTH_PARM, 128);
+            signatureCounter = prefs.getInt(SIGNATURE_COUNTER, 10);
+            countSignatures = prefs.getBoolean(SIGNATURE_COUNTER_FLAG, false);
+
+            if (countSignatures) {
+                randomKeys = true;
+                randomPlainTexts = true;
+            }
+
         }
     }
 

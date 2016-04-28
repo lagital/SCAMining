@@ -1,65 +1,103 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
-    android:orientation="vertical"
-    android:layout_width="match_parent"
+<ScrollView
     android:layout_height="match_parent"
-    android:layout_gravity="center">
-
-    <android.support.v7.widget.Toolbar
-        android:id="@+id/toolbar"
-        android:layout_width="match_parent"
-        android:layout_height="?attr/actionBarSize"
-        app:popupTheme="@style/AppTheme.PopupOverlay" />
-
-    <LinearLayout
+    android:layout_width="match_parent"
+    xmlns:android="http://schemas.android.com/apk/res/android">
+    <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+        xmlns:app="http://schemas.android.com/apk/res-auto"
+        android:orientation="vertical"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_gravity="center"
-        android:visibility="visible"
-        android:orientation="vertical">
+        android:layout_gravity="center">
 
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="match_parent"
-            android:id="@+id/delay_setting_text"
-            android:text="@string/settings_delay_title"
-            android:visibility="visible"
-            android:textSize="@dimen/text_height"
-            android:layout_gravity="center" />
+        <android.support.v7.widget.Toolbar
+            android:id="@+id/toolbar"
+            android:layout_width="match_parent"
+            android:layout_height="?attr/actionBarSize"
+            app:popupTheme="@style/AppTheme.PopupOverlay" />
 
-        <NumberPicker
-            android:layout_gravity="center"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:id="@+id/delay_setting_picker"
-            android:visibility="visible">
-        </NumberPicker>
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="match_parent"
-            android:id="@+id/open_text_length_input"
-            android:text="@string/plaintext_length_input_title"
-            android:visibility="visible"
-            android:textSize="@dimen/text_height"
-            android:layout_gravity="center" />
-
-        <EditText
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:numeric="integer"
-            android:id="@+id/plaintext_length_input_window"
-            android:textSize="@dimen/input_text_height"/>
+            android:layout_gravity="center"
+            android:visibility="visible"
+            android:orientation="vertical">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="match_parent"
+                android:id="@+id/delay_setting_text"
+                android:text="@string/settings_delay_title"
+                android:visibility="visible"
+                android:textSize="@dimen/text_height"
+                android:layout_gravity="center" />
+
+            <NumberPicker
+                android:layout_gravity="center"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:id="@+id/delay_setting_picker"
+                android:visibility="visible">
+            </NumberPicker>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="match_parent"
+                android:id="@+id/open_text_length_input"
+                android:text="@string/plaintext_length_input_title"
+                android:visibility="visible"
+                android:textSize="@dimen/text_height"
+                android:layout_gravity="center" />
+
+            <EditText
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="number"
+                android:textAlignment="center"
+                android:id="@+id/plaintext_length_input_window"
+                android:textSize="@dimen/input_text_height"/>
+
+
+            <RelativeLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal">
+
+                <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="match_parent"
+                android:id="@+id/known_signature_count_input"
+                android:text="@string/known_signature_count_input"
+                android:visibility="visible"
+                android:textSize="@dimen/text_height"
+                android:layout_centerHorizontal="true" />
+
+                <CheckBox
+                    android:layout_width="wrap_content"
+                    android:layout_height="match_parent"
+                    android:id="@+id/known_signature_flag"
+                    android:layout_alignParentBottom="true"
+                    android:layout_alignParentEnd="true" />
+
+            </RelativeLayout>
+
+                <EditText
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:inputType="number"
+                    android:textAlignment="center"
+                    android:id="@+id/known_signature_count_input_window"
+                    android:textSize="@dimen/input_text_height"/>
+
+        </LinearLayout>
+
+        <Button
+            android:layout_gravity="bottom|center"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:id="@+id/settings_ok_button"
+            android:text="@string/settings_ok_button"
+            android:visibility="visible"/>
 
     </LinearLayout>
-
-    <Button
-        android:layout_gravity="bottom|center"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:id="@+id/settings_ok_button"
-        android:text="@string/settings_ok_button"
-        android:visibility="visible"/>
-
-</LinearLayout>
+</ScrollView>
