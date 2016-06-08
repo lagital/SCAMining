@@ -146,9 +146,11 @@ public class AsyncEncryption extends AsyncTask<Algorithm, Void, Integer> {
                                 try {
                                     cipher = Cipher.getInstance(algorithmInstance);
                                     cipher.init(Cipher.ENCRYPT_MODE, k, iv);
-                                    time_start = System.currentTimeMillis();
+                                    //time_start = System.currentTimeMillis();
+                                    time_start = System.nanoTime();
                                     byte[] cipherText = cipher.doFinal(s);
-                                    time_end = System.currentTimeMillis();
+                                    //time_end = System.currentTimeMillis();
+                                    time_end = System.nanoTime();
 
                                     Thread.sleep(1000 * delayTime / 2);
 
