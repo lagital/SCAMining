@@ -3,6 +3,7 @@ package com.domain.pborisenko.scasandbox;
 import android.content.Intent;
 import android.os.Bundle;
 import android.support.v7.app.ActionBarActivity;
+import android.support.v7.internal.widget.AdapterViewCompat;
 import android.support.v7.widget.Toolbar;
 import android.util.Log;
 import android.view.View;
@@ -45,12 +46,7 @@ public class MainActivity extends ActionBarActivity {
         algorithmsList.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-                for (int i = 0; i < algorithmsList.getChildCount(); i++) {
-                    View cv = algorithmsList.getChildAt(i);
-                    cv.setSelected(false);
-                    view.setBackgroundColor(getResources().getColor(R.color.colorUnSelectedAlgorithm));
-                }
-                view.setBackgroundColor(getResources().getColor(R.color.colorSelectedAlgorithm));
+                view.setSelected(true);
                 TextView t = (TextView) view;
                 selectedAlgorithm = Algorithm.valueOf(t.getText().toString());
             }
@@ -90,6 +86,9 @@ public class MainActivity extends ActionBarActivity {
     }
 
     public enum Algorithm {
-        TDES
+        TDES,
+        RSA,
+        AES,
+        DES
     }
 }

@@ -40,7 +40,10 @@ public class AsyncEncryption extends AsyncTask<Algorithm, Void, Integer> {
 
     private final static String TAG = "AsyncEncryption";
 
-    private final static String TDES_INSTANCE = "DESede/CBC/PKCS5Padding";
+    private final static String TDES_INSTANCE = "DESede/ECB/NoPadding";
+    private final static String RSA_INSTANCE  = "RSA/ECB/NoPadding";
+    private final static String AES_INSTANCE  = "AES/ECB/NoPadding";
+    private final static String DES_INSTANCE  = "DES/ECB/NoPadding";
 
     private final static String RET_CODE_1 = "Configuration file is missing";
     private final static String RET_CODE_2 = "Encryption failed. Please turn on debug to investigate.";
@@ -118,8 +121,6 @@ public class AsyncEncryption extends AsyncTask<Algorithm, Void, Integer> {
         String str;
         Integer signatureIterator = 0;
 
-        switch (parms[0]) {
-            case TDES: {
                 while (continueWriting) {
 
                     if (countSignatures && signatureIterator.equals(signatureCounter)) {
@@ -141,11 +142,10 @@ public class AsyncEncryption extends AsyncTask<Algorithm, Void, Integer> {
 
                     for (byte [] s : plainTexts) {
                         for (SecretKey k : secretKeys) {
-                            for (IvParameterSpec iv : initialVectors) {
                                 Cipher cipher;
                                 try {
                                     cipher = Cipher.getInstance(algorithmInstance);
-                                    cipher.init(Cipher.ENCRYPT_MODE, k, iv);
+                                    cipher.init(Cipher.ENCRYPT_MODE, k);
                                     //time_start = System.currentTimeMillis();
                                     time_start = System.nanoTime();
                                     byte[] cipherText = cipher.doFinal(s);
@@ -180,12 +180,9 @@ public class AsyncEncryption extends AsyncTask<Algorithm, Void, Integer> {
                                     retCode = 2;
                                     e.printStackTrace();
                                     return null;
-                                }
                             }
                         }
                     }
-                }
-            }
         }
 
         try {
@@ -257,7 +254,7 @@ public class AsyncEncryption extends AsyncTask<Algorithm, Void, Integer> {
             plainTexts.add(hexStringToByteArray(i));
         }
         // keys
-        for (String i : config.tdesKeys) {
+        for (String i : config.keys) {
             byte[] encodedKey = hexStringToByteArray(i);
             secretKeys.add(new SecretKeySpec(encodedKey, 0, encodedKey.length, alg.name()));
         }
@@ -279,6 +276,12 @@ public class AsyncEncryption extends AsyncTask<Algorithm, Void, Integer> {
         switch (alg) {
             case TDES:
                 algorithmInstance = TDES_INSTANCE;
+            case RSA:
+                algorithmInstance = RSA_INSTANCE;
+            case AES:
+                algorithmInstance = AES_INSTANCE;
+            case DES:
+                algorithmInstance = DES_INSTANCE;
             default:
                 algorithmInstance = TDES_INSTANCE;
         }
@@ -299,21 +302,13 @@ public class AsyncEncryption extends AsyncTask<Algorithm, Void, Integer> {
 
         public List<String> plainTexts = new ArrayList<String>();
         public List<String> ivs = new ArrayList<String>();
-        public List<String> tdesKeys = new ArrayList<String>();
+        public List<String> keys = new ArrayList<String>();
 
         private Configuration (Algorithm alg) {
             Log.d(TAG, "In config constructor ...");
             File file;
             try {
-                switch (alg) {
-                    case TDES: {
-                        file = new File(mActivity.getExternalFilesDir(null), alg.name() + CONFIG);
-                    }
-
-                    default: {
-                        file = new File(mActivity.getExternalFilesDir(null), alg.name() + CONFIG);
-                    }
-                }
+                file = new File(mActivity.getExternalFilesDir(null), alg.name() + CONFIG);
 
                 if (!file.exists()) {
                     retCode = 1;
@@ -332,7 +327,7 @@ public class AsyncEncryption extends AsyncTask<Algorithm, Void, Integer> {
                 nodeList = doc.getElementsByTagName(KEY_NODE);
                 for (int i = 0; i < nodeList.getLength(); i++) {
                     Node node = nodeList.item(i);
-                    tdesKeys.add(node.getTextContent());
+                    keys.add(node.getTextContent());
                 }
 
                 nodeList = doc.getElementsByTagName(PLAINTEXT_NODE);
@@ -352,7 +347,7 @@ public class AsyncEncryption extends AsyncTask<Algorithm, Void, Integer> {
                 }
 
                 Log.d(TAG, PLAINTEXT_NODE + " - " + Integer.toString(plainTexts.size()) + " elements.");
-                Log.d(TAG, KEY_NODE + " - " + Integer.toString(tdesKeys.size()) + " elements.");
+                Log.d(TAG, KEY_NODE + " - " + Integer.toString(keys.size()) + " elements.");
                 Log.d(TAG, IV_NODE + " - " + Integer.toString(ivs.size()) + " elements.");
 
             } catch (Exception e) {
