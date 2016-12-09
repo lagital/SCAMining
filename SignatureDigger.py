@@ -2,47 +2,75 @@ from optparse import OptionParser
 import pandas as pd
 import numpy as np
 from scipy.io.wavfile import read
+import matplotlib.pyplot as plt
+from scipy import signal
 
-use_debug = True
-analyse_signatures = 3
+use_debug            = False
+device_sampling      = 44100
+timestamp_sampling   = 1000000000
 
 def main():
+    global use_debug
+
     parser = OptionParser()
     parser.add_option("-t", "--trace", dest="tracepath",
                   help="/path/to/trace file", metavar="FILE")
-    parser.add_option("-l", "--log", dest="timestamppath",
+    parser.add_option("-s", "--stamp", dest="timestamppath",
                   help="/path/to/timestamp file", metavar="FILE")
+    parser.add_option("-d", "--debug", dest="use_debug",
+                  help="y or n to turn on/off debugging", metavar="Boolean")
     parser.add_option("-o", "--options", dest="options",
                   help="possible options:")
     (options, args) = parser.parse_args()
+
+    if options.use_debug == 'y':
+        use_debug = True
 
     timestamp = pd.read_csv(options.timestamppath, header=None)
     timestamp.columns = ['plain', 'key', 'cypher', 'time']
 
     wave_file = read(options.tracepath)
-    wave_data = np.array(wave_file[1],dtype=float)  
+    wave_data = np.array(wave_file[1],dtype=float)
 
-    debug(wave_data[0:5])
-    debug(list(timestamp.time))
+    plt.plot(wave_data)
+    plt.ylabel('some numbers')
+    plt.show()
+    return
 
-    total_trace_time = wave_data.size
+    debug('Wave data length (points):', wave_data.size)
+    debug('Signatures (n):', timestamp.time.size // 2)
 
-    total_encryption_time = timestamp.time[timestamp.time.size - 1] - timestamp.time[0]
-    print ('Total encryption time (ms):', total_encryption_time)
+    sig_time = timestamp.time[1] - timestamp.time[0]
+    sig_length = int(np.round(sig_time * device_sampling / timestamp_sampling))
+    debug('~signature length:', sig_length)
+    sig_length_total = int(np.round((timestamp.time[timestamp.time.size-1] - timestamp.time[0]) 
+        * device_sampling / timestamp_sampling))
+    debug('Signatures length total:', sig_length_total)
 
-    search_range = total_trace_time - total_encryption_time
-    print ('Search range (points):', search_range)
+    max_m = 0
+    i_best = 0
+    t_range = int(wave_data.size - sig_length_total)
+    print('Convolution calculation (' + str(t_range) + ') ...')
+    for i in range(t_range):
+        #convolution = signal.fftconvolve(wave_data, wave_data[i:i+sig_length], mode='full')
+        convolution = np.convolve(wave_data, wave_data[i:i+sig_length])
+        m = np.mean(convolution)
+        if i % 1000 == 0:
+            print('Step:', i, '/', t_range)
+        if max_m < m:
+            max_m = m
+            i_best = i
+            debug('Result was updated', '')
 
-    #for i in range(total_trace_time - search_range):
-    subrange = timestamp.time[2] - timestamp.time[1]
-    print (subrange)
-    convolution = np.convolve(wave_data[0:subrange], wave_data)
+    #convolution = signal.fftconvolve(wave_data, wave_data[i_best:i_best+sig_length], mode='full')
+    convolution = np.convolve(wave_data, wave_data[i_best:i_best+sig_length])
+    plt.plot(convolution)
+    plt.ylabel('some numbers')
+    plt.show()
 
-    print (convolution)
-
-def debug(t):
+def debug(t1, t2):
     if use_debug == True:
-        print (t)
+        print (t1, t2)
 
 if __name__ == "__main__":
     main()
