@@ -175,6 +175,7 @@ def main():
             print("Learning is finished ...")
             break
     profile_finish('WORK_WITH_NETWORK')
+    sql.close_connection(connection)
     profile_finish('MAIN')
 
 def debug(t1, t2):
